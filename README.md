@@ -1,6 +1,7 @@
 # Ouellet Pipeline
 
-![Pipeline Workflow](https://via.placeholder.com/800x200.png?text=WebCrawler+%26+ContentProcessor+Pipeline)
+[![Description de l'image](https://raw.githubusercontent.com/M-Lai-ai/logo/refs/heads/main/favicon.ico)](https://votre-lien-cible.com)
+
 
 ## Table of Contents
 
