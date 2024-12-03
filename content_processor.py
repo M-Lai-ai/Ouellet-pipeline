@@ -46,6 +46,8 @@ class ContentProcessor:
         self.base_dir = base_dir
         self.create_directories()
         self.session = self.create_requests_session()
+        self.processed_files = set()  # Initialiser un set pour les fichiers traités
+        self.load_processed_files()
 
     def create_directories(self):
         """Crée la structure de dossiers nécessaire."""
@@ -174,7 +176,7 @@ class ContentProcessor:
         encoding = tiktoken.encoding_for_model(model)
         return len(encoding.encode(text))
 
-    def send_to_gpt(self, content, max_chunk_tokens=1500):
+    def send_to_gpt(self, content, max_chunk_tokens=8000):
         """Envoie le contenu à GPT en le découpant en blocs basés sur les tokens."""
         headers = {
             'Content-Type': 'application/json',
@@ -182,37 +184,37 @@ class ContentProcessor:
         }
 
         system_prompt = """
-Vous êtes un assistant spécialisé dans la restructuration de documents pour Ouellet Canada.
-Votre tâche est de :
+        Vous êtes un assistant spécialisé dans la restructuration de documents pour Ouellet Canada.
+        Votre tâche est de :
 
-1. PRÉSERVER ABSOLUMENT TOUT LE CONTENU du document original, sans rien omettre.
-2. Restructurer le contenu en format Markdown clair et lisible.
-3. Pour les tableaux :
-   - Identifier les tables correctement délimitées avec [DÉBUT TABLEAU] et [FIN TABLEAU].
-   - Transformer chaque ligne en une entrée structurée.
-   - Répéter les en-têtes de colonnes pour chaque entrée.
-   - Convertir les tables en format Markdown.
+        1. PRÉSERVER ABSOLUMENT TOUT LE CONTENU du document original, sans rien omettre.
+        2. Restructurer le contenu en format Markdown clair et lisible.
+        3. Pour les tableaux :
+           - Identifier les tables correctement délimitées avec [DÉBUT TABLEAU] et [FIN TABLEAU].
+           - Transformer chaque ligne en une entrée structurée.
+           - Répéter les en-têtes de colonnes pour chaque entrée.
+           - Convertir les tables en format Markdown.
 
-### Exemple de Transformation :
+        ### Exemple de Transformation :
 
-**Avant :**
-[DÉBUT TABLEAU]
-Produit Description Quantité Prix
-EUH02B21T 2000W, 208V, 1ph, amande 31 90.00 $
-EUH02B71CT 2000W, 480V, 1ph, amande 18 90.00 $
-[FIN TABLEAU]
+        **Avant :**
+        [DÉBUT TABLEAU]
+        Produit Description Quantité Prix
+        EUH02B21T 2000W, 208V, 1ph, amande 31 90.00 $
+        EUH02B71CT 2000W, 480V, 1ph, amande 18 90.00 $
+        [FIN TABLEAU]
 
-**Après :**
-# Produit: EUH02B21T
-- Description: 2000W, 208V, 1ph, amande
-- Quantité: 31
-- Prix: 90.00 $
+        **Après :**
+        # Produit: EUH02B21T
+        - Description: 2000W, 208V, 1ph, amande
+        - Quantité: 31
+        - Prix: 90.00 $
 
-# Produit: EUH02B71CT
-- Description: 2000W, 480V, 1ph, amande
-- Quantité: 18
-- Prix: 90.00 $
-"""
+        # Produit: EUH02B71CT
+        - Description: 2000W, 480V, 1ph, amande
+        - Quantité: 18
+        - Prix: 90.00 $
+        """
 
         encoding = tiktoken.encoding_for_model("gpt-4")
         tokens = encoding.encode(content)
@@ -225,13 +227,13 @@ EUH02B71CT 2000W, 480V, 1ph, amande 18 90.00 $
 
         for idx, chunk in enumerate(chunks):
             payload = {
-                "model": "gpt-4",
+                "model": "gpt-4o-mini",
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": chunk}
                 ],
                 "temperature": 0,
-                "max_tokens": 1600
+                "max_tokens": 8000
             }
 
             # Calculer et loguer la taille du payload
@@ -290,6 +292,20 @@ EUH02B71CT 2000W, 480V, 1ph, amande 18 90.00 $
                             if not page_data.get('text'):
                                 continue
 
+                            # Générer le nom de fichier restructuré
+                            filename = self.sanitize_filename(
+                                os.path.basename(file_path),
+                                'Doc',
+                                '_restructured.txt',
+                                page_number=page_data['page']  # Inclure le numéro de page
+                            )
+                            save_path = os.path.join(self.base_dir, 'content', filename)
+
+                            # Vérifier si le fichier restructuré existe déjà
+                            if os.path.exists(save_path):
+                                logging.info(f"Fichier restructuré déjà existant, skipping: {filename}")
+                                continue
+
                             # Ajouter des marqueurs de contexte pour GPT
                             context = (
                                 f"[DÉBUT PAGE {page_data['page']}]\n"
@@ -307,14 +323,6 @@ EUH02B71CT 2000W, 480V, 1ph, amande 18 90.00 $
                                 continue
 
                             # Sauvegarder le résultat en .txt
-                            filename = self.sanitize_filename(
-                                os.path.basename(file_path),
-                                'Doc',
-                                '_restructured.txt',
-                                page_number=page_data['page']  # Inclure le numéro de page
-                            )
-                            save_path = os.path.join(self.base_dir, 'content', filename)
-
                             try:
                                 with open(save_path, 'w', encoding='utf-8') as f:
                                     # Ajouter des métadonnées au début du fichier
@@ -340,11 +348,37 @@ EUH02B71CT 2000W, 480V, 1ph, amande 18 90.00 $
                                     f.write(page_data['text'])
                                 logging.info(f"Contenu brut sauvegardé dans : {raw_save_path}")
 
+                                # Sauvegarder le fichier traité dans le fichier de suivi
+                                self.save_processed_file(save_path)
+
                             except IOError as e:
                                 logging.error(f"Erreur de sauvegarde pour {file_path} page {page_data['page']}: {e}")
 
                     except Exception as e:
                         logging.error(f"Erreur lors du traitement de {file_path}: {e}", exc_info=True)
+
+    def load_processed_files(self):
+        """Charge les noms des fichiers déjà traités depuis le fichier de suivi."""
+        processed_files_path = os.path.join(self.base_dir, 'logs', 'processed_files.txt')
+        if os.path.exists(processed_files_path):
+            with open(processed_files_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    # Stocker les noms de fichiers traités sans le chemin
+                    self.processed_files.add(os.path.basename(line.strip()))
+            logging.info(f"Loaded {len(self.processed_files)} processed files from tracking file.")
+        else:
+            logging.info("No processed files tracking file found, starting fresh.")
+
+    def save_processed_file(self, filename):
+        """Sauvegarde le nom d'un fichier traité dans le fichier de suivi."""
+        processed_files_path = os.path.join(self.base_dir, 'logs', 'processed_files.txt')
+        try:
+            with open(processed_files_path, 'a', encoding='utf-8') as f:
+                f.write(filename + '\n')
+            self.processed_files.add(os.path.basename(filename))
+            logging.debug(f"Added {filename} to processed files tracking.")
+        except Exception as e:
+            logging.error(f"Error saving processed file tracking for {filename}: {str(e)}")
 
     def run_pipeline(self, pdf_directory, doc_directory):
         """Exécute le pipeline de traitement sur les répertoires PDF et Doc."""
