@@ -180,7 +180,7 @@ class WebCrawler:
         # Si aucun type n'est déterminé, retourner None
         return None, None
 
-    def sanitize_filename(self, url, file_type, extension):
+    def sanitize_filename(self, url, file_type, extension, page_number=None):
         """Crée un nom de fichier sécurisé à partir de l'URL, en ajustant l'extension si nécessaire."""
         # Création d'un hash court de l'URL
         url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
@@ -200,25 +200,39 @@ class WebCrawler:
         if not extension:
             extension = '.txt'  # Extension par défaut si non déterminée
 
-        return f"{name}_{url_hash}{extension}"
+        if page_number is not None:
+            sanitized = f"{name}_page_{page_number:03d}_{url_hash}{extension}"
+        else:
+            sanitized = f"{name}_{url_hash}{extension}"
+
+        logging.debug(f"Nom de fichier sanitizé: {sanitized}")
+        return sanitized
 
     def download_file(self, url, file_type):
         """Télécharge un fichier et le sauvegarde dans le dossier approprié."""
         try:
             logging.info(f"Attempting to download {file_type} file from: {url}")
+            
+            # Déterminer le type de fichier et l'extension
+            response = self.session.head(url, allow_redirects=True, timeout=10)
+            file_type_detected, extension = self.get_file_type_and_extension(url, response)
+            if not file_type_detected:
+                logging.warning(f"Could not determine the file type for: {url}")
+                return False
+
+            # Renommer le fichier correctement
+            filename = self.sanitize_filename(url, file_type_detected, extension)
+            save_path = os.path.join(self.base_dir, file_type_detected, filename)
+
+            # Vérifier si le fichier existe déjà
+            if os.path.exists(save_path):
+                logging.info(f"Fichier déjà téléchargé, skipping: {filename}")
+                return False
+
+            # Télécharger le fichier
             response = self.session.get(url, stream=True, timeout=20)
 
             if response.status_code == 200:
-                # Déterminer le type de fichier et l'extension
-                file_type_detected, extension = self.get_file_type_and_extension(url, response)
-                if not file_type_detected:
-                    logging.warning(f"Could not determine the file type for: {url}")
-                    return False
-
-                # Renommer le fichier correctement
-                filename = self.sanitize_filename(url, file_type_detected, extension)
-                save_path = os.path.join(self.base_dir, file_type_detected, filename)
-
                 # Sauvegarder le fichier
                 with open(save_path, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=8192):
@@ -383,7 +397,16 @@ class WebCrawler:
                         file_type_detected, _ = self.get_file_type_and_extension(current_url, response_head)
 
                     if file_type_detected:
+                        # Renommer le fichier pour vérifier l'existence
+                        filename = self.sanitize_filename(current_url, file_type_detected, self.content_type_mapping[file_type_detected].get(response_head.headers.get('Content-Type', '').lower(), ''))
+                        save_path = os.path.join(self.base_dir, file_type_detected, filename)
+
+                        if os.path.exists(save_path):
+                            logging.info(f"Fichier déjà téléchargé, skipping: {filename}")
+                            continue
+
                         self.download_file(current_url, file_type_detected)
+                        self.downloaded_files.add(current_url)
                     continue
 
                 response = self.session.get(current_url, timeout=20)
@@ -408,7 +431,15 @@ class WebCrawler:
                                     response_head = self.session.get(absolute_url, allow_redirects=True, timeout=10)
                                     file_type_detected, _ = self.get_file_type_and_extension(absolute_url, response_head)
 
-                                if file_type_detected and absolute_url not in self.downloaded_files:
+                                if file_type_detected:
+                                    # Renommer le fichier pour vérifier l'existence
+                                    filename = self.sanitize_filename(absolute_url, file_type_detected, self.content_type_mapping[file_type_detected].get(response_head.headers.get('Content-Type', '').lower(), ''))
+                                    save_path = os.path.join(self.base_dir, file_type_detected, filename)
+
+                                    if os.path.exists(save_path):
+                                        logging.info(f"Fichier déjà téléchargé, skipping: {filename}")
+                                        continue
+
                                     self.download_file(absolute_url, file_type_detected)
                                     self.downloaded_files.add(absolute_url)
                                 continue
@@ -434,6 +465,9 @@ class WebCrawler:
         logging.info(f"Language pattern: {self.language_pattern}")
         logging.info(f"Maximum depth: {self.max_depth}")
 
+        # Charger les fichiers téléchargés précédemment
+        self.load_downloaded_files()
+
         try:
             # Phase 1: Extraction des URLs
             logging.info("Phase 1: Starting URL extraction")
@@ -456,6 +490,32 @@ class WebCrawler:
         except Exception as e:
             logging.error(f"Critical error during crawling: {str(e)}")
             self.generate_report(time.time() - start_time, error=str(e))
+
+        finally:
+            # Sauvegarder les fichiers téléchargés
+            self.save_downloaded_files()
+
+    def load_downloaded_files(self):
+        """Charge les URLs des fichiers déjà téléchargés depuis le fichier de suivi."""
+        downloaded_files_path = os.path.join(self.base_dir, 'logs', 'downloaded_files.txt')
+        if os.path.exists(downloaded_files_path):
+            with open(downloaded_files_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    self.downloaded_files.add(line.strip())
+            logging.info(f"Loaded {len(self.downloaded_files)} downloaded files from tracking file.")
+        else:
+            logging.info("No downloaded files tracking file found, starting fresh.")
+
+    def save_downloaded_files(self):
+        """Sauvegarde les URLs des fichiers téléchargés dans le fichier de suivi."""
+        downloaded_files_path = os.path.join(self.base_dir, 'logs', 'downloaded_files.txt')
+        try:
+            with open(downloaded_files_path, 'w', encoding='utf-8') as f:
+                for url in sorted(self.downloaded_files):
+                    f.write(url + '\n')
+            logging.info(f"Saved {len(self.downloaded_files)} downloaded files to tracking file.")
+        except Exception as e:
+            logging.error(f"Error saving downloaded files tracking: {str(e)}")
 
     def generate_report(self, duration, error=None):
         """Génère un rapport détaillé du processus de crawling."""
