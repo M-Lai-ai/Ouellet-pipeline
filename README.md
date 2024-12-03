@@ -1,153 +1,181 @@
-WebCrawler & ContentProcessor Pipeline
+# Ouellet Pipeline
 
-Table of Contents
+![Pipeline Workflow](https://via.placeholder.com/800x200.png?text=WebCrawler+%26+ContentProcessor+Pipeline)
 
-	•	Overview
-	•	Features
-	•	Architecture
-	•	Prerequisites
-	•	Installation
-	•	Configuration
-	•	Usage
-	•	Directory Structure
-	•	Logging and Reports
-	•	Troubleshooting
-	•	Contributing
-	•	License
-	•	Contact
+## Table of Contents
 
-Overview
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Directory Structure](#directory-structure)
+- [Logging and Reports](#logging-and-reports)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
 
-The WebCrawler & ContentProcessor Pipeline is an automated system designed to:
-	1.	Crawl a specified website to discover and download PDF and DOC/DOCX files.
-	2.	Process the downloaded files by extracting text, performing OCR on scanned PDFs, restructuring content using OpenAI’s GPT-4, and saving the processed content as separate .txt files per page.
+## Overview
 
-This pipeline is ideal for organizations looking to automate the collection and processing of documents for analysis, archiving, or further content management.
+The **Ouellet Pipeline** is an automated system designed to:
 
-Features
+1. **Crawl a specified website** to discover and download PDF and DOC/DOCX files.
+2. **Process the downloaded files** by extracting text, performing OCR on scanned PDFs, restructuring content using OpenAI's GPT-4, and saving the processed content as separate `.txt` files per page.
 
-	•	Web Crawling:
-	•	Recursive crawling up to a specified depth.
-	•	Downloading of PDF and DOC/DOCX files.
-	•	Handling of multiple content types with appropriate directory structuring.
-	•	Content Processing:
-	•	Extraction of text from PDFs (including OCR for scanned documents).
-	•	Extraction of text from DOC/DOCX files.
-	•	Restructuring of extracted content into Markdown format using GPT-4.
-	•	Generation of individual .txt files for each page of a PDF.
-	•	Logging and Reporting:
-	•	Comprehensive logging of crawling and processing activities.
-	•	Generation of detailed reports and summaries post-execution.
-	•	Configuration:
-	•	Easy setup using environment variables for sensitive data like API keys.
+This pipeline is ideal for organizations like **Ouellet Canada** looking to automate the collection and processing of documents for analysis, archiving, or further content management.
 
-Architecture
+## Features
 
-	1.	WebCrawler (crawler.py):
-	•	Initiates crawling from a starting URL.
-	•	Discovers and downloads PDF and DOC/DOCX files.
-	•	Saves files in organized directories (PDF, Doc, etc.).
-	2.	ContentProcessor (content_processor.py):
-	•	Processes downloaded files.
-	•	Extracts text content using PyPDF2 and OCR (pytesseract) for PDFs.
-	•	Extracts text from DOC/DOCX using python-docx.
-	•	Sends content to OpenAI GPT-4 for restructuring into Markdown.
-	•	Saves processed content as separate .txt files per PDF page.
-	3.	Master Pipeline (master_pipeline.py):
-	•	Orchestrates the execution of WebCrawler and ContentProcessor sequentially.
+- **Web Crawling**:
+  - Recursive crawling up to a specified depth.
+  - Downloading of PDF and DOC/DOCX files.
+  - Handling of multiple content types with appropriate directory structuring.
+  
+- **Content Processing**:
+  - Extraction of text from PDFs (including OCR for scanned documents).
+  - Extraction of text from DOC/DOCX files.
+  - Restructuring of extracted content into Markdown format using GPT-4.
+  - Generation of individual `.txt` files for each page of a PDF.
+  
+- **Logging and Reporting**:
+  - Comprehensive logging of crawling and processing activities.
+  - Generation of detailed reports and summaries post-execution.
+  
+- **Configuration**:
+  - Easy setup using environment variables for sensitive data like API keys.
+  
+## Architecture
 
-Prerequisites
+![Architecture Diagram](https://via.placeholder.com/800x400.png?text=Architecture+Diagram)
 
-	•	Python 3.7 or higher
-	•	Tesseract OCR:
-	•	Required for performing OCR on scanned PDFs.
-	•	OpenAI API Key:
-	•	Required for accessing GPT-4 for content restructuring.
+1. **WebCrawler (`crawler.py`)**:
+   - Initiates crawling from a starting URL.
+   - Discovers and downloads PDF and DOC/DOCX files.
+   - Saves files in organized directories (`PDF`, `Doc`, etc.).
+   
+2. **ContentProcessor (`content_processor.py`)**:
+   - Processes downloaded files.
+   - Extracts text content using PyPDF2 and OCR (pytesseract) for PDFs.
+   - Extracts text from DOC/DOCX using `python-docx`.
+   - Sends content to OpenAI GPT-4 for restructuring into Markdown.
+   - Saves processed content as separate `.txt` files per PDF page.
+   
+3. **Master Pipeline (`master_pipeline.py`)**:
+   - Orchestrates the execution of `WebCrawler` and `ContentProcessor` sequentially.
 
-Installation
+## Prerequisites
 
-	1.	Clone the Repository:
+- **Python 3.7 or higher**
+- **Tesseract OCR**:
+  - Required for performing OCR on scanned PDFs.
+- **OpenAI API Key**:
+  - Required for accessing GPT-4 for content restructuring.
 
-git clone https://github.com/yourusername/WebCrawler-ContentProcessor-Pipeline.git
-cd WebCrawler-ContentProcessor-Pipeline
+## Installation
 
+1. **Clone the Repository**:
 
-	2.	Set Up a Virtual Environment (optional but recommended):
+   ```bash
+   git clone https://github.com/M-Lai-ai/Ouellet-pipeline.git
+   cd Ouellet-pipeline
+   ```
 
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+2. **Set Up a Virtual Environment** (optional but recommended):
 
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
 
-	3.	Install Dependencies:
-Ensure you have pip updated:
+3. **Install Dependencies**:
 
-pip install --upgrade pip
+   Ensure you have `pip` updated:
 
-Install required Python packages:
+   ```bash
+   pip install --upgrade pip
+   ```
 
-pip install -r requirements.txt
+   Install required Python packages:
 
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-	4.	Install Tesseract OCR:
-	•	Windows:
-	•	Download the installer from Tesseract at UB Mannheim.
-	•	Run the installer and follow the setup instructions.
-	•	Add the Tesseract installation directory (e.g., C:\Program Files\Tesseract-OCR) to your system PATH.
-	•	macOS:
+4. **Install Tesseract OCR**:
 
-brew install tesseract
+   - **Windows**:
+     - Download the installer from [Tesseract at UB Mannheim](https://github.com/tesseract-ocr/tesseract/wiki/Downloads).
+     - Run the installer and follow the setup instructions.
+     - Add the Tesseract installation directory (e.g., `C:\Program Files\Tesseract-OCR`) to your system `PATH`.
 
+   - **macOS**:
+     ```bash
+     brew install tesseract
+     ```
 
-	•	Linux:
+   - **Linux**:
+     ```bash
+     sudo apt-get install tesseract-ocr
+     ```
 
-sudo apt-get install tesseract-ocr
+   - **Install Additional Language Packs** (if needed):
+     ```bash
+     # Exemple pour le français
+     sudo apt-get install tesseract-ocr-fra
+     ```
 
+## Configuration
 
-	•	Install Additional Language Packs (if needed):
+1. **Create a `.env` File**:
 
-sudo apt-get install tesseract-ocr-fra  # Example for French
+   At the root of your project directory, create a `.env` file to store environment variables securely.
 
+   ```bash
+   touch .env
+   ```
 
+2. **Add Your OpenAI API Key**:
 
-Configuration
+   Open the `.env` file in a text editor and add your OpenAI API key:
 
-	1.	Create a .env File:
-At the root of your project directory, create a .env file to store environment variables securely.
+   ```
+   OPENAI_API_KEY=your_openai_api_key_here
+   ```
 
-touch .env
+   **Note**: Replace `your_openai_api_key_here` with your actual OpenAI API key. **Do not share or commit this file to version control.**
 
-
-	2.	Add Your OpenAI API Key:
-Open the .env file in a text editor and add your OpenAI API key:
-
-OPENAI_API_KEY=your_openai_api_key_here
-
-Note: Replace your_openai_api_key_here with your actual OpenAI API key. Do not share or commit this file to version control.
-
-Usage
+## Usage
 
 Run the master pipeline script to start the crawling and processing workflow.
 
+```bash
 python master_pipeline.py
+```
 
-Script Breakdown
+### Script Breakdown
 
-	1.	crawler.py:
-	•	Crawls the specified website.
-	•	Downloads PDF and DOC/DOCX files.
-	•	Saves files in respective directories (PDF, Doc, etc.).
-	2.	content_processor.py:
-	•	Processes the downloaded files.
-	•	Extracts text and performs OCR if necessary.
-	•	Sends content to GPT-4 for restructuring.
-	•	Saves processed content as individual .txt files per PDF page.
-	3.	master_pipeline.py:
-	•	Coordinates the execution of both WebCrawler and ContentProcessor.
-	•	Ensures sequential processing and handles any critical errors.
+1. **`crawler.py`**:
+   - Crawls the specified website.
+   - Downloads PDF and DOC/DOCX files.
+   - Saves files in respective directories (`PDF`, `Doc`, etc.).
 
-Directory Structure
+2. **`content_processor.py`**:
+   - Processes the downloaded files.
+   - Extracts text and performs OCR if necessary.
+   - Sends content to GPT-4 for restructuring.
+   - Saves processed content as individual `.txt` files per PDF page.
 
-/project_directory
+3. **`master_pipeline.py`**:
+   - Coordinates the execution of both `WebCrawler` and `ContentProcessor`.
+   - Ensures sequential processing and handles any critical errors.
+
+## Directory Structure
+
+```
+/Ouellet-pipeline
 │
 ├── crawler.py              # WebCrawler class
 ├── content_processor.py    # ContentProcessor class
@@ -163,64 +191,72 @@ Directory Structure
     ├── /logs               # Logs generated by WebCrawler
     ├── crawler_report.txt  # Detailed crawl report
     └── summary.txt         # Summary of the crawling process
+```
 
-Note: Each execution of the crawler generates a new crawler_output_YYYYMMDD_HHMMSS directory based on the timestamp.
+**Note**: Each execution of the crawler generates a new `crawler_output_YYYYMMDD_HHMMSS` directory based on the timestamp.
 
-Logging and Reports
+## Logging and Reports
 
-	•	Logs:
-	•	Crawler Logs: Located at crawler_output_<timestamp>/logs/crawler.log
-	•	Pipeline Logs: Located at the root as pipeline.log
-	•	Reports:
-	•	Detailed Report: crawler_output_<timestamp>/crawler_report.txt
-	•	Summary: crawler_output_<timestamp>/summary.txt
+- **Logs**:
+  - **Crawler Logs**: Located at `crawler_output_<timestamp>/logs/crawler.log`
+  - **Pipeline Logs**: Located at the root as `pipeline.log`
+
+- **Reports**:
+  - **Detailed Report**: `crawler_output_<timestamp>/crawler_report.txt`
+  - **Summary**: `crawler_output_<timestamp>/summary.txt`
 
 These logs provide insights into the crawling and processing activities, including any errors encountered.
 
-Troubleshooting
+## Troubleshooting
 
-	•	Tesseract OCR Not Found:
-	•	Ensure Tesseract is installed and added to your system PATH.
-	•	Verify installation by running tesseract --version in your terminal.
-	•	OpenAI API Errors:
-	•	Check your API key in the .env file.
-	•	Ensure your API key has sufficient permissions and quota.
-	•	Review the error messages in pipeline.log for specifics.
-	•	Dependency Issues:
-	•	Ensure all dependencies are installed correctly via requirements.txt.
-	•	Consider recreating your virtual environment if issues persist.
-	•	Permission Errors:
-	•	Ensure you have the necessary permissions to create and write to directories and files in the project path.
+- **Tesseract OCR Not Found**:
+  - Ensure Tesseract is installed and added to your system `PATH`.
+  - Verify installation by running `tesseract --version` in your terminal.
 
-Contributing
+- **OpenAI API Errors**:
+  - Check your API key in the `.env` file.
+  - Ensure your API key has sufficient permissions and quota.
+  - Review the error messages in `pipeline.log` for specifics.
+
+- **Dependency Issues**:
+  - Ensure all dependencies are installed correctly via `requirements.txt`.
+  - Consider recreating your virtual environment if issues persist.
+
+- **Permission Errors**:
+  - Ensure you have the necessary permissions to create and write to directories and files in the project path.
+
+## Contributing
 
 Contributions are welcome! Please follow these steps:
-	1.	Fork the Repository
-	2.	Create a Feature Branch
 
-git checkout -b feature/YourFeatureName
+1. **Fork the Repository**
 
+2. **Create a Feature Branch**
 
-	3.	Commit Your Changes
+   ```bash
+   git checkout -b feature/YourFeatureName
+   ```
 
-git commit -m "Add some feature"
+3. **Commit Your Changes**
 
+   ```bash
+   git commit -m "Add some feature"
+   ```
 
-	4.	Push to the Branch
+4. **Push to the Branch**
 
-git push origin feature/YourFeatureName
+   ```bash
+   git push origin feature/YourFeatureName
+   ```
 
+5. **Open a Pull Request**
 
-	5.	Open a Pull Request
+## License
 
-License
+Distributed under the MIT License. See `LICENSE` for more information.
 
-Distributed under the MIT License. See LICENSE for more information.
+## Contact
 
-Contact
+**M-LAI** – [m.lai@example.com](mailto:m.lai@example.com)
 
-Your Name – your.email@example.com
-
-Project Link: https://github.com/yourusername/WebCrawler-ContentProcessor-Pipeline
-
-Disclaimer: This project is provided “as is” without any warranties. Use it at your own risk.
+Project Link: [https://github.com/M-Lai-ai/Ouellet-pipeline.git](https://github.com/M-Lai-ai/Ouellet-pipeline.git)
